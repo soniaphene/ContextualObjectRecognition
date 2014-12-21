@@ -1,0 +1,274 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+
+    <title>Context in Object Detection</title>
+</head>
+
+
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+<style>
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+</style>
+
+<body>
+
+    <div class="row">
+        <div class="col-md-2"></div>
+        <div class="col-md-8">
+            <div class="page-header center">
+                <h1>Measuring the Importance of Context in Object Detection <small>by Sonia Phene (sphene) </small></h1>
+            </div>
+            <h2>Abstract</h2>
+            <p>In this project, I compared the performance of humans and computer vision models at the task of object recognition with varying levels of context provided for the object. The images I used were from the Microsoft COCO (Common Objects in Common Contexts) dataset. I used a deformable parts model and ran it on four categories of the MS COCO set. In order to collect information and provide a basis of knowledge for how context is used by humans, I had workers on Amazon Mechanical Turk recognize objects with no context (cropped), in a scene with context (outlined), and with only context (boxed) for ten of the categories from MS COCO. I found that the computer vision model ran best when it used context, which for this model entailed rescoring based on the presence of other objects. I discovered that humans tended to be best at object recognition with no context (the cropped image), fine with recognizing objects outlined in a scene, and worst at recognizing an object only given its context (and the actual object boxed out). </p>
+            <h2>Overview of the Problem</h2>
+			<p> Object detection is one of the fundamental problems of computer vision. It is widely known that computers tend to be worse at vision tasks than humans (the prevalence of the use of CAPTCHAS demonstrates one application of exploiting this) and object detection is no exception. Models have tried to become more advanced by using different features and more data. Deep learning has been proposed as a way to learn the features and bypass the representation problem altogether. Many models have moved towards emulating humans. 
+			</p>
+            <p> In this project, I explored the use of context for object detection by humans and computers. There are two main theories describing how humans recognize objects: first, there is an idea that humans use top-down processing, in that they take in the image as a whole and use expectations and memory search in order to recognize specific objects. The other theory is that humans use fundamental features of objects (one theory states that we use geons as descriptors) and ideas of what typically falls into certain categories in order to recognize objects. It is likely that both types are used in some way. Computer vision detectors typically use more of the latter theory in doing object detection tasks. In this project, I specifically looked at the use of a deformable parts model that represented objects by how their parts related to one and other. I ran experiments to see how humans use object detection versus how they were run for computers.  </p>
+            <h3>Hypothesis</h3>
+            <p> I hypothesized that humans use context heavily when given the task of recognizing images. I estimated that humans would do better at object detection tasks when given more context about an object rather than when presented with the object by itself. However, this would depend on the type of object. Some objects, such as forks, would typically be very small and hard to identify without context. Other objects may be captured in a way that they are more of a central focus, so context would not be as important. I also thought that since computers use context minimally, they would not perform better when given context. 
+            </p>
+           <h2>Methodology</h2>
+            <p> The main focus of this projet was collecting information about how humans recognize objects with and without context. I put up images from the MS COCO dataset and had workers categorize objects given no context (the cropped image around an object), with context (the original image with an outline drawn around the object), and only context (a grey bounding box obscuring the object in the original image). I also ran a discriminative deformable parts <a href="http://www.cs.berkeley.edu/~rbg/latent/">model</a> on a subset of the MSCOCO dataset and saw how it performed. 
+            </p>
+            <h3> Use of MS COCO </h3>
+            <p> Microsoft COCO was used because it provides a large dataset of images with objects in their natural environments. Unlike PASCAL, MS COCO has over 70 categories of objects in non-iconic viewpoints and provides much contextual information. In the paper, the authors note that MS COCO allows for exploring using context and a training base to overcome the variability in appearance. For this project, I used the 2014 image dataset and used a sample of images from the following ten categories (which differ in typical size and portion of an image): </p>
+            <ul>
+                <li>Fork </li>
+                <li>Bicycle </li>
+                <li>Car</li>
+                <li>Stop Sign</li>
+                <li>Couch</li>
+                <li>Toothbrush</li>
+                <li>Person</li>
+                <li>Cell Phone</li>
+                <li>Refrigerator</li>
+                <li>Wine Glass</li>
+            </ul>
+            <h3>Altering Images</h3>
+            <p> For each of the ten categories listed above, I took a subset of the images. I then took the original image and altered it in three ways. First, in order to show the object in the original scene, I simply drew a bounding black box outlining the image. Second, to show the object without context, I simply cropped the image around this bounding box. Third, to show only context, I filled in the bounding box with a gray color (chosen since it contrasts well with most images). MS COCO has the advantage of providing image segmentations on the objects. However, I chose to find the bounding boxes containing all segments since I did not want to provide shape information to the users, which would detract from using context. Something to note is that the MS COCO dataset often annotates objects no matter how small or partial they are. For example, if an image of a dog has a human arm wrapped around it, that arm segment will be labeled as person. To ensure that I did not have one image from MS COCO in too many times, I set a restriction that each image could only contribute two objects to the overall set. In addition, some objects were so small that the image was simply too pixelated to post. I did not include these images in the set, and used the Flickr interface to determine which images were of too low quality. </p>
+            <p> Here are some example images below of images with no context (cropped), only context (boxed), and the object plus context (outlined).  </p>
+            <p> Cropped images of a cell phone, bicycle, and wine glass (at actual size): </p>
+                <img src="bikecrop.jpg" />
+                <img src="phonecrop.jpg"  />
+                <img src="winecrop.jpg"/>
+            <p> Boxed images of a fork, stop sign, and tooth brush (at 33% size): </p>
+                <img src="forkboxed.jpg" width ="33%"/>
+                <img src="stopboxed.jpg"  width ="33%"/>
+                <img src="toothboxed.jpg" width ="33%"/>
+            <p> Outlined images of a car, couch, and person (at 33% size): </p>
+                <img src="caroutlined.jpg" width ="33%"/>
+                <img src="couchoutlined.jpg"  width ="33%"/>
+                <img src="personoutlined.jpg" width ="33%"/>
+            <p>Here is a snippet of the python code that I used in conjunction with the python MS COCO API to obtain the boxed images. The cropped and outlined code was similar.</p>
+            <pre>
+for im_id in im_id_list:
+    im = self.loadImage(im_id)
+    imp= self.images[im_id]
+    plt.imshow(im)
+    ax = plt.gca()
+    name = ('%s/%s/%s'%(self.image_folder, imp['file_path'], imp['file_name']))
+    newname = "images_changed/boxed/"+str(category_id)+"/"
+    # loop through all annotations
+    counter = 0 
+    for ann in anns:
+        if not ann['category_id'] == category_id:
+            continue
+        if not ann['image_id'] == im_id:
+            continue
+        counter +=1
+        if counter > 2: Want to limit how many this image has
+            continue 
+        max_x=[]
+        min_x=[]
+        max_y=[]
+        min_y=[]
+        if self.ann_key == 'instances':
+            polygons = []
+            for seg in ann['segmentation']: #loop through all segments to find extreme points in each
+                poly = np.array(seg).reshape((len(seg)/2, 2))
+                max_x.append(max(poly[:,0]))
+                max_y.append(max(poly[:,1]))
+                min_x.append(min(poly[:,0]))
+                min_y.append(min(poly[:,1]))
+                polygons.append(Polygon(poly, True))
+            img = Image.open(name) #draw a box with the coordinates of max and min across all segments
+            draw = ImageDraw.Draw(img)
+            draw.rectangle([min(min_x),min(min_y),max(max_x),max(max_y)], fill='grey')
+            del draw
+            img.save(newname+str(counter)+imp['file_name'],"PNG")
+            </pre>
+            <h3>Amazon Mechanical Turk</h3>
+            <p> After obtaining these images, I designed an AMT interface that would allow workers to categorize the images. I used 150 images from each of the ten categories for a total of 1500 images. Workers were paid $0.05 per hit and had to have the qualification of performing image categorization tasks. </p>
+            <p> Workers knew the ten categories in advance. For each hit, a worker was given a label of an image (boxed, cropped, or outlined) and a single image with the following instructions: </p>
+            <div style="border:1px solid black">
+            <p><i> Your task is to identify the object in the image. There are three different types of images you will see.
+<br>
+<br>"Boxed": This indicates that the object has been covered by a grey box. Choose the category of the object that you think is hidden behind the box. Note that the box may be small.
+<br>
+<br>"Outlined": This indicates that the object has been outlined by a black box. Choose the category of the object that you think is outlined by the black lines. Note that the box may be small.
+<br>
+<br>"Cropped": The image has been cropped to include only the object. Choose the category of the object shown in the image. 
+</div>
+</i> </p>
+            <p> The AMT interface requires a file of input image urls and labels. I chose to host these images on Flickr and chose ID names and strings for each image such that a worker could not infer the category from the url (at any rate, workers were not shown the url by default). Below, is a snippet of python code that I used to programmatically obtain the image urls after I uploaded these images to Flickr. </p>
+            <pre>
+photosetid= &ltalbum_id&gt
+api_key= &ltkey&gt
+api_secret= &ltsecret&gt
+flickr = flickrapi.FlickrAPI(api_key, api_secret, format='json')
+flickr.authenticate_via_browser(perms='read')
+raw_json = flickr.photosets.getPhotos(photoset_id=photosetid) 
+parsed = json.loads(raw_json.decode('utf-8'))
+for pic in parsed['photoset']['photo']:
+    print "https://farm"+str(pic['farm'])+".staticflickr.com/"+pic['server']+"/"+pic['id']+"_"+pic['secret']+".jpg"
+            </pre>
+            <h3> Deformable Parts Model</h3>
+            <p> I also used a discriminatively trained deformable parts model by Felzenswalb et. al on the MS COCO set. The model that I used was only trained on the PASCAL VOC 20 categories, therefore I could only run it on the person, bicycle, sofa/couch, and car categories (the four that overlapped with the ones I chose from MS COCO). Their model gives the option to run object detection (which finds a bounding box around the object) with or without context. When using the option 'with context', the model rescores detection based on the presence of any other categories. </p>
+            <p> Here are some visualizations of the model performing well (i.e. finding the correct bounding box) on images from the MS COCO dataset for people and cars. </p>
+            <img src="3persongrammar.jpg" width="48%"/>
+            <img src="carsdistance.jpg" width="48%"/>
+            <p> Here are some visualizations of the model performing poorly (i.e. not finding the correct bounding box or any bounding box) on images from the MS COCO dataset for sofas, cars, and bicycles.  </p>
+                        <img src="couch.jpg" width="33%"/>
+                        <img src="carshighway.jpg" width="33%"/>
+                        <img src="onlyonebike.jpg" width="33%"/>
+
+
+
+            <h2>Results</h2>
+            <h3> Human categorizations </h3>
+            <p>The numbers below represent the true positives of images (in percentage). True positive is the fraction of correct identifications for a given category for a given type over the number of occurrences of all objects of that category for a given type. That is, the number of correct categorizations for a given category and type divided by the number of images for a given category and type. </p>
+            <table style="width:100%">
+                <tr>
+
+                    <td>Category </td>
+                    <td> Boxed </td>
+                    <td> Outlined </td>
+                    <td> Cropped </td>
+                </tr>
+                <tr>
+                <td>Fork</td>
+                <td>92.0</td>
+                <td>92.0</td>
+                <td>91.1111111111</td>
+                </tr>
+                <tr>
+                <td>Bicycle</td>
+                <td>60.0</td>
+                <td>66.0</td>
+                <td>89.7435897436</td>
+                </tr>
+                <tr>
+                <td>Car</td>
+                <td>76.0</td>
+                <td>76.0</td>
+                <td>83.7209302326</td>
+                </tr>
+                <tr>
+                <td>Stop Sign</td>
+                <td>88.0</td>
+                <td>94.0</td>
+                <td>97.2972972973</td>
+                </tr>
+                <tr>
+                <td>Couch</td>
+                <td>46.0</td>
+                <td>80.0</td>
+                <td>71.4285714286</td>
+                </tr>
+                <tr>
+                <td>Toothbrush</td>
+                <td>86.0</td>
+                <td>90.0</td>
+                <td>95.4545454545</td>
+                </tr>
+                <tr>
+                <td>Person</td>
+                <td>88.0</td>
+                <td>96.0</td>
+                <td>97.619047619</td>
+                </tr>
+                <tr>
+                <td>Wine Glass</td>
+                <td>86.0</td>
+                <td>88.0</td>
+                <td>89.57</td>
+                </tr>
+                <tr>
+                <td>Cell Phone</td>
+                <td>90.0</td>
+                <td>68.0</td>
+                <td>93.9393939394</td>
+                </tr>
+                <tr>
+                <td>Refrigerator</td>
+                <td>74.0</td>
+                <td>94.0</td>
+                <td>98.0</td>
+                </tr>
+
+            </table>
+            <br>
+            <br>
+            <p> The confusion matrices below show the performance for each of the types (boxed, cropped, and outlined) for the ten categories. Note that cropped performs the best, evidenced by the fact that most of the hits happen on the diagonals. These matrices also show which categories are often confused for one and other. Each category for each of the types had 50 images that corresponded to it, so a perfectly accurate run would have 50 along the diagonals.</p>
+            <img src =  "boxedconf.png" width="65%" />
+            <img src =  "croppedconf.png" width="65%"/>
+            <img src =  "Outlinedconf.png" width="65%"/>
+            <h3> Model</h3>
+            <p> I assessed the deformable parts model by running it on 100 images from each of the categroies and evaluating whether or not the identified object was correctly present within the bounding box. I simply used a binary to determine whether or not the box drawn was a succcesful categorization. The numbers reported below represents the percentage of bounding boxes that accurately contained the given category. </p>
+            <table style="width:100%">
+                <tr>
+                    <td> </td>
+                    <td>Person </td>
+                    <td> Bicycle </td>
+                    <td> Sofa </td>
+                    <td> Car </td>
+                </tr>
+                    <td> With Context</td>
+                    <td> 38.6</td>
+                    <td> 45.2</td>
+                    <td> 13.4</td>
+                    <td> 37.2</td>
+                </tr>
+                <tr>
+                    <td> Without Context</td>
+                    <td> 32.3</td>
+                    <td> 40.3</td>
+                    <td> 10.1</td>
+                    <td> 35.4</td>
+
+                </tr>
+            </table>
+            <h3> Improvements </h3>
+            <p> <b>Explicit tagging:</b> To build on this experiment, it would be better to have AMT workers simply enter the category of the object. For the sake of ease of obtaining the information (in that it would not require parsing the answers for synsets), I had them do categorization. However, this could possibly alter the task given that they could use process of elimination or guess the most probable object out of ten. This would change the task because it provides them with additional information. Arguably, this is similar to computer vision detectors since they have a finite number of categories that they choose between. </p>
+            <p> <b>Outlines:</b> The biggest flaw in this experiment was the outlined interface. If I were to redo the experiment, I would either make the outlines more prominent, or I would allow for a feature such as a mouseover or button click where the object of interest (in this case, the image segmentation annotations could come in handy) would be highlighted. AMT workers took the longest time on the tasks where they were required to categorize the object of interest. This is probably because the outlines were hardest to find. This also probably contributed to the lowest accuracy since they may be confused or not see what was outlined. </p>
+            <p> <b>More data: </b> As always, having more data would provide more information. Since this was a proof of concept for a course project, I limited the money that was spent on paying workers to do these tasks. To improve on this, I would include more than 50 images per type per category (for a total of 1500 images). I would also have images presented multiple times to provide more complete information. </p>
+
+            <h2>Conclusions </h2>
+            <p> Overall, humans generally performed best at identifying the cropped image by itself. That is, they did best at using no context, well at having the object with context, and worst at having the image with only context. The only exceptions to this rule are for forks and cell phones. For the former, workers accurately identified 92% of forks in context or outlined in a scene. That percentage barely dropped for the cropped image of the fork itself. For cell phones, workers got 93% of cropped images and 90% of the images with context but a very low recognition of 68% for outlined, which was probably due to the fact that cell phones are small in scenes, and it may have been difficult to find their outlines. Also interesting to note is that people were equally good at recognizing cars in a scene or the boxed image with the car blocked out. They also did the worst (out of any category of any type) at recognizing couches with only context. This could be because couches are a large enough portion of images that what is behind the box could be ambiguous. Conversely, they did the best at recognizing cropped images of refrigerators, which is probably due to the fact that fridges are large enought that cropping the image doesn't make it too hard to see and interpret the image. The largest difference between no context and only context was for bicycles at 89.7% and 60%, respectively. MS COCO bike images are in varied contexts often on crowded roads or cluttered scenes, which could have made it more difficult to identify. The smallest gap between boxed and cropped was with forks at less than 1%, indicating people were good at identifying this category regardless of how it was presented. </p>
+            <p> Computer vision model did better with context, but the way it used context was simply doing more object detection and seeing if other objects were present. These findings were consistent with those that the authors of the model found on the PASCAL VOC set. This model performed better when it did take into account other contextual clues and parts of the image that were not of the object. </p>
+            <p> Contrary to my hypothesis, computer vision detectors did better when incorporating context whereas humans usually did not. The design flaw in my experiment of the outlines definitely hindered the ability to make any definitive claim and this should be explored more thoroughly. </p>
+            <h3> Acknowledgements </h3>
+            <p> This project was done as a semester's worth of work for Professor James Hays' CS2951B: Data Driven Vision and Graphics grad seminar at Brown University. I would like to thank the James Hays Lab and Genevieve Patterson for their support and funding in running this project on Amazon Mechanical Turk. </p>
+            <p> I used the MSCOCO dataset of <a href="http://mscoco.org/">images</a> in this project, and the related paper for background. 
+                <br>Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr Dollar, and C Lawrence Zitnick
+                <br>Microsoft COCO: Common Objects in Context.
+                <br>ECCV 2014. </p>
+            <p> I also used the discriminatively trained deformable parts model from this <a href ="http://www.cs.berkeley.edu/~rbg/latent/">website</a> as referred to in this paper: 
+                <br>P. Felzenszwalb, R. Girshick, D. McAllester, D. Ramanan
+<br>Object Detection with Discriminatively Trained Part Based Models
+<br>IEEE Transactions on Pattern Analysis and Machine Intelligence, Vol. 32, No. 9, Sep. 2010 </p>
+
+
+
+        <div class="col-md-2"></div>
+    </div>
+
+
+</body>
+</html>
